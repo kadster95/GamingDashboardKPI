@@ -61,9 +61,18 @@ def _looks_like_game_sheet(df: pd.DataFrame) -> bool:
 def process_upload(
     file_bytes: bytes,
     filename: str,
+    date_override: Optional[str] = None,
 ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame], List[str]]:
     """
     Parse an uploaded file (CSV or Excel).
+
+    Args:
+        file_bytes:    Raw file content.
+        filename:      Original filename (used to detect extension).
+        date_override: Optional ISO date string (YYYY-MM-DD).  When supplied,
+                       every row in the parsed data is stamped with this date,
+                       even if the file contains its own Date column.  This
+                       also enables files with *no* Date column to be accepted.
 
     Returns:
         daily_df   – cleaned daily-summary DataFrame (or None)
@@ -94,6 +103,9 @@ def process_upload(
 
         if _looks_like_game_sheet(raw_df):
             norm = _normalise_columns(raw_df, GAME_COLUMN_ALIASES)
+            # Inject override date before validation so missing-date files work
+            if date_override is not None:
+                norm["date"] = pd.to_datetime(date_override)
             cleaned, warns = validate_game(norm)
             for w in warns:
                 all_warnings.append(f"[Game/{sheet_name}] {w}")
@@ -101,6 +113,9 @@ def process_upload(
                 game_frames.append(cleaned)
         else:
             norm = _normalise_columns(raw_df, COLUMN_ALIASES)
+            # Inject override date before validation
+            if date_override is not None:
+                norm["date"] = pd.to_datetime(date_override)
             cleaned, warns = validate_daily(norm)
             for w in warns:
                 all_warnings.append(f"[Daily/{sheet_name}] {w}")

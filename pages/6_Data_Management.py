@@ -64,16 +64,63 @@ with tab_upload:
         key="file_uploader",
     )
 
+    # ---------------------------------------------------------------------------
+    # Date confirmation / override
+    # ---------------------------------------------------------------------------
+
+    st.markdown("##### 📅 Report Date")
+    date_col1, date_col2 = st.columns([1, 1])
+
+    with date_col1:
+        date_mode = st.radio(
+            "Date source",
+            options=["Read from file", "Set a single date for all rows"],
+            index=0,
+            help=(
+                "Choose **'Read from file'** when your file has a Date column. "
+                "Choose **'Set a single date'** when the file has no Date column "
+                "or you want to override every row with one specific date."
+            ),
+        )
+
+    with date_col2:
+        report_date_input = st.text_input(
+            "Report date (YYYY-MM-DD)",
+            value=date.today().strftime("%Y-%m-%d"),
+            placeholder="e.g. 2024-03-15",
+            help=(
+                "Used as-is when **'Set a single date'** is selected. "
+                "Also acts as a fallback if no valid date is found in the file."
+            ),
+        )
+        # Live validation feedback
+        try:
+            confirmed_date = pd.to_datetime(report_date_input).strftime("%Y-%m-%d")
+            st.caption(f"✅ Confirmed date: **{confirmed_date}**")
+            date_input_valid = True
+        except Exception:
+            st.caption("⚠️ Enter a valid date in YYYY-MM-DD format.")
+            confirmed_date = date.today().strftime("%Y-%m-%d")
+            date_input_valid = False
+
     overwrite_toggle = st.checkbox(
         "Overwrite existing data for matching dates", value=True
     )
 
     if uploaded_file is not None:
         if st.button("🚀 Process & Save", type="primary"):
+            # Pass date_override into the parser so it is injected *before*
+            # validation — this also enables files that have no Date column.
+            override = confirmed_date if date_mode == "Set a single date for all rows" else None
+
             with st.spinner("Processing file…"):
                 daily_df, game_df, warnings = process_upload(
-                    uploaded_file.read(), uploaded_file.name
+                    uploaded_file.read(), uploaded_file.name,
+                    date_override=override,
                 )
+
+            if override:
+                warnings.insert(0, f"Date override applied: all rows assigned {override}.")
 
             # Show warnings
             if warnings:

@@ -50,7 +50,6 @@ initialize_database()
 # Sidebar — date filter
 # ---------------------------------------------------------------------------
 
-st.sidebar.image("", use_container_width=False)   # placeholder for logo
 st.sidebar.title("🎰 Casino Analytics")
 st.sidebar.markdown("---")
 
